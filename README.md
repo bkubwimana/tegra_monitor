@@ -44,14 +44,14 @@ For O Series, DeepSeek-R1, and Gemini models, we utilize their default API confi
 
 For all other models evaluated locally, we maintain consistent hyperparameters across all evaluations:
 
-```json
+```python
 {
-    "temperature": [0.0, 0.3, 0.6],  // 0.3 used for AIME 2024
-                                     // Average of all three used for AIME I 2025
-    "n_sampling": 8,                 // Samples per question
-    "max_tokens": 32768,             // Maximum response length
-    "seed": 0,                       // Fixed seed for reproducibility
-    "top_p": 0.95                    // Nucleus sampling parameter
+    "temperature": [0.0, 0.3, 0.6],  # 0.3 used for AIME 2024
+                                     # Average of all three used for AIME I 2025
+    "n_sampling": 8,                 # Samples per question
+    "max_tokens": 32768,             # Maximum response length
+    "seed": 0,                       # Fixed seed for reproducibility
+    "top_p": 0.95                    # Nucleus sampling parameter
 }
 ```
 
