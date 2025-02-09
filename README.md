@@ -95,3 +95,19 @@ Based on these findings, we recommend:
 3. **Size Considerations**: For larger models (>14B parameters), temperature settings have less impact on final performance
 
 This analysis has been incorporated into our evaluation protocol for future benchmarks.
+
+## Contributors
+
+[Yixin Ye](https://github.com/BLeaves), [Yang Xiao](https://github.com/XiaoYang66), Tiantian Mi, [Pengfei Liu](https://github.com/pfliu-nlp)
+
+## Citaion
+
+```bibtex
+@misc{ye2025aimepreview,
+    title = {AIME-Preview: A Rigorous and Immediate Evaluation Framework for Advanced Mathematical Reasoning},
+    author = {Yixin Ye and Yang Xiao and Tiantian Mi and Pengfei Liu},
+    year = {2025},
+    howpublished = {\url{https://github.com/GAIR-NLP/AIME-Preview}},
+    note = {GitHub repository}
+}
+```
