@@ -16,6 +16,8 @@
 
 ## Models Under Evaluation
 
+For detailed instructions and implementation details, please refer to `eval/README.md`.
+
 ### Open Models
 - DeepSeek Series
   - DeepSeek-R1
