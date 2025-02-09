@@ -1,4 +1,4 @@
-# AIME-Preview
+# AIME-Preview: A Rigorous and Immediate Evaluation Framework for Advanced Mathematical Reasoning
 
 🚀 Real-time evaluation platform for mathematical reasoning models, featuring immediate results on AIME 2025 Part 1 (released Feb 8, 2025).
 
