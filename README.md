@@ -5,9 +5,10 @@
 ## Latest Results
 
 ### AIME 2025 Part 1 Results
-> Released within 24 hours of official exam release
 
 ![Result-AIME-I-2025](images/Result-AIME-I-2025.jpg)
+
+The reported results for AIME I 2025 represent the average performance across multiple temperature settings (0.0, 0.3, and 0.6). For detailed configuration parameters, please refer to the `Hyperparameter Configuration` section.
 
 ### Historical Performance
 - AIME 2024
