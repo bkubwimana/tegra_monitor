@@ -7,7 +7,7 @@
 ### AIME 2025 Part 1 Results
 > Released within 24 hours of official exam release
 
-[Results Table/Graph will be inserted here]
+![Result-AIME-I-2025](images/Result-AIME-I-2025.jpg)
 
 ### Historical Performance
 - AIME 2024
@@ -33,13 +33,62 @@
 
 ## Evaluation Protocol
 
-### Hyperparameters
-We maintain strict consistency across all evaluations:
-```
+
+### Hyperparameter Configuration
+
+#### API-Based Models
+
+For O Series, DeepSeek-R1, and Gemini models, we utilize their default API configurations without modification and sample 8 times per question.
+
+#### Locally Deployed Models
+
+For all other models evaluated locally, we maintain consistent hyperparameters across all evaluations:
+
+```json
 {
-    "temperature": 0.3,      # Controls randomness in generation
-    "n_sampling": 8,         # Number of samples per question
-    "max_tokens": 32768,     # Maximum response length
-    "seed": 0,              # Fixed seed for reproducibility
-    "top_p": 0.95           # Nucleus sampling parameter
+    "temperature": [0.0, 0.3, 0.6],  // 0.3 used for AIME 2024
+                                     // Average of all three used for AIME I 2025
+    "n_sampling": 8,                 // Samples per question
+    "max_tokens": 32768,             // Maximum response length
+    "seed": 0,                       // Fixed seed for reproducibility
+    "top_p": 0.95                    // Nucleus sampling parameter
 }
+```
+
+## Temperature Impact Analysis
+
+We conducted a comprehensive analysis of model performance across different temperature settings (0.0, 0.3, and 0.6) for AIME I 2025. 
+
+![Result-Temperaturet](images/Result-Temperature.jpg)
+
+Key findings include:
+
+### Model-Specific Temperature Sensitivity
+
+1. **Large Model Stability**
+   - DeepSeek-R1-Distill-Llama-70B showed the highest average performance (51.4%) but exhibited significant variance across temperatures (60.0%, 45.8%, 48.3%)
+   - DeepSeek-R1-Distill-Qwen-14B and 32B maintained relatively stable performance across all temperatures, with averages of 46.7% and 46.1% respectively
+
+2. **Medium-Size Model Behavior**
+   - DeepSeek-R1-Distill-Qwen-7B showed interesting temperature scaling, with performance improving as temperature increased (33.3% → 37.5% → 40.0%)
+   - QwQ demonstrated optimal performance at temperature 0.3 (40.8%), with lower scores at both extremes
+
+3. **Smaller Model Characteristics**
+   - DeepSeek-R1-Distill-Qwen-1.5B and s1 showed similar patterns, performing best at temperature 0.0
+   - DeepSeek-R1-Distill-Llama-8B uniquely performed best at temperature 0.3 (28.3%)
+
+### Key Observations
+
+- **Optimal Temperature Varies**: No single temperature setting was universally optimal across all models
+- **Size Correlation**: Larger models generally showed more stability across temperature variations
+- **Performance-Stability Tradeoff**: Models with higher average performance often showed greater sensitivity to temperature changes
+
+### Recommendations
+
+Based on these findings, we recommend:
+
+1. **Model-Specific Tuning**: Consider individual temperature tuning for each model rather than using a fixed setting
+2. **Ensemble Approach**: For critical applications, consider averaging results across multiple temperature settings
+3. **Size Considerations**: For larger models (>14B parameters), temperature settings have less impact on final performance
+
+This analysis has been incorporated into our evaluation protocol for future benchmarks.
