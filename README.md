@@ -1,19 +1,19 @@
 # AIME-Preview: A Rigorous and Immediate Evaluation Framework for Advanced Mathematical Reasoning
 
-🚀 Real-time evaluation platform for mathematical reasoning models, featuring immediate results on AIME 2025 Part 1 (released Feb 8, 2025).
+🚀 Real-time evaluation platform for mathematical reasoning models, featuring immediate results on AIME 2025 (released Feb 14, 2025).
 
 ## Latest Results
 
-### AIME 2025 Part 1 Results
+### AIME 2025  Results
 
-![Result-AIME-I-2025](images/Result-AIME-I-2025.jpg)
+![Result-AIME-2025](images/Result-AIME-2025.png)
 
-The reported results for AIME I 2025 represent the average performance across multiple temperature settings (0.0, 0.3, and 0.6). For detailed configuration parameters, please refer to the `Hyperparameter Configuration` section.
+The reported results for AIME 2025 represent the average performance across multiple temperature settings (0.0, 0.3, and 0.6). For detailed configuration parameters, please refer to the `Hyperparameter Configuration` section.
 
 ### Historical Performance
 - AIME 2024
 - AIME 2025 Part 1 
-- AIME 2025 Part 2 (Coming Soon)
+- AIME 2025 Part 2
 
 ## Models Under Evaluation
 
@@ -60,7 +60,7 @@ For all other models evaluated locally, we maintain consistent hyperparameters a
 
 ## Temperature Impact Analysis
 
-We conducted a comprehensive analysis of model performance across different temperature settings (0.0, 0.3, and 0.6) for AIME I 2025. 
+We conducted a comprehensive analysis of model performance across different temperature settings (0.0, 0.3, and 0.6) for AIME 2025. The result of AIME I 2025 is shown below:
 
 ![Result-Temperaturet](images/Result-Temperature.jpg)
 
