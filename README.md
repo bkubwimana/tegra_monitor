@@ -6,7 +6,7 @@
 
 ### AIME 2025  Results
 
-![Result-AIME-2025](images/Result-AIME-2025.png)
+![Result-AIME-2025](images/Result-AIME-2025-0311.png)
 
 The reported results for AIME 2025 represent the average performance across multiple temperature settings (0.0, 0.3, and 0.6). For detailed configuration parameters, please refer to the `Hyperparameter Configuration` section.
 
@@ -62,7 +62,7 @@ For all other models evaluated locally, we maintain consistent hyperparameters a
 
 We conducted a comprehensive analysis of model performance across different temperature settings (0.0, 0.3, and 0.6) for AIME 2025. The result of AIME I 2025 is shown below:
 
-![Result-Temperaturet](images/Result-Temperature.jpg)
+![Result-Temperaturet](images/Result-Temperature-0311.jpg)
 
 Key findings include:
 
