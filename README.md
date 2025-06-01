@@ -1,2 +1,2 @@
-# tegra_monitor
-Open Source Tegrastats CLI
+# tegra monitor
+Open Source Tegrastats CLI: tmon
