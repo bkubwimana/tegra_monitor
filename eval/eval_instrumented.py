@@ -16,10 +16,11 @@ from utils.data_loader import load_data
 from utils.math_normalization import *
 from utils.grader import *
 from utils.summary import Summary
+from instrument.performance import VLLMPerformanceInstrument
+from instrument.telemetry import TelemetryHandler
+from instrument.telemetry_proc import process_telemetry_log
 import pickle
 from math import comb
-
-# envs.VLLM_HOST_IP="0.0.0.0" or "127.0.0.1"
 
 def parse_list(arg):
     return arg.split(',')
@@ -50,10 +51,10 @@ def parse_args():
     parser.add_argument("--seed", default=0, type=int)
     parser.add_argument("--dtype", default='auto', type=str)
     parser.add_argument("--completions_save_dir", default='./completions', type=str)
-    # parser.add_argument("--use_qwen_check", action="store_true")
-    args = parser.parse_args()
+    parser.add_argument("--config_suffix", default="", type=str, help="Suffix for instrumentation files")
     
-    args.top_p = 1 if args.temperature == 0 else args.top_p # top_p must be 1 when using greedy 
+    args = parser.parse_args()
+    args.top_p = 1 if args.temperature == 0 else args.top_p
     print(f"current stop list: {args.stop}")
     return args
 
@@ -90,7 +91,6 @@ def get_three_prompt(prompt_type, data_name):
 
     return system_prompt, few_shot_prompt, question_format
 
-
 def infer(args):
     model_name_or_path = args.model_name_or_path
     print(f"current eval model: {model_name_or_path}")
@@ -118,13 +118,18 @@ def infer(args):
     out_file_prefix = f'{args.max_tokens}t_{args.split}_{args.prompt_type}_t{args.temperature}'
     out_file = f'{args.output_dir}/{model_name}/{args.data_name}/{out_file_prefix}_k{args.n_sampling}_s{args.start_idx}_e{args.end_idx}.jsonl'
     
-    # Initialize summary
+    # Initialize instrumentation
     summary = Summary(args, model_name)
-    
+    perf_instrument = VLLMPerformanceInstrument(
+        output_dir=f'{args.output_dir}/{model_name}/{args.data_name}',
+        model_name=model_name,
+        config_suffix=args.config_suffix or f"tokens_{args.max_tokens}"
+    )
     
     if os.path.exists(out_file):
         print(f"Completely same name file({out_file}) exist, skip generation, save file and check correct")
         return
+        
     os.makedirs(f'{args.output_dir}/{model_name}/{args.data_name}', exist_ok=True)
     os.makedirs(f'{args.completions_save_dir}/{model_name}/{args.data_name}', exist_ok=True)
     
@@ -132,10 +137,11 @@ def infer(args):
     if len(available_gpus) == 1:
         envs.VLLM_HOST_IP="0.0.0.0" or "127.0.0.1"
     print(f"available_gpus: {available_gpus}")
+    
     tokenizer = AutoTokenizer.from_pretrained(model_name_or_path, trust_remote_code=True)
     prompt_batch = []
+    
     for example in tqdm(examples, total=len(examples)):
-        # parse question and answer
         question = parse_question(example, args.data_name)
         system_prompt, few_shot_prompt, question_format = get_three_prompt(args.prompt_type, args.data_name)
         
@@ -143,6 +149,7 @@ def infer(args):
             cur_prompt = few_shot_prompt + question_format.format(question=question)
         else:
             cur_prompt = question_format.format(question=question)
+            
         if args.surround_with_messages:
             messages = [
                 {"role": "system", "content": system_prompt},
@@ -150,45 +157,99 @@ def infer(args):
             ]
             cur_prompt = get_conversation_prompt_by_messages(tokenizer=tokenizer, messages=messages)
         prompt_batch.append(cur_prompt)
+
     print(prompt_batch[0])
     
     llm = LLM(model=model_name_or_path, 
               tensor_parallel_size=len(available_gpus), 
               trust_remote_code=True, 
-            #   swap_space=60,
               gpu_memory_utilization=0.90,
               )
     
-    file_outputs = []
-    correct_cnt = 0
-    for cur_generation_epoch in range(generation_epoch):
-        completions_save_file = f'{args.completions_save_dir}/{model_name}/{args.data_name}/{out_file_prefix}_k{args.n_sampling}_s{args.start_idx}_e{args.end_idx}_gen_round{cur_generation_epoch}.pkl'
+    # Start telemetry and performance monitoring
+    telemetry_suffix = args.config_suffix or f"tokens_{args.max_tokens}"
+    with TelemetryHandler(
+        output_dir=f'{args.output_dir}/{model_name}/{args.data_name}',
+        config_suffix=telemetry_suffix
+    ) as telemetry:
         
-        completions = llm.generate(prompt_batch, sampling_params)
+        perf_instrument.start_batch()
+        file_outputs = []
+        correct_cnt = 0
+        all_completions = []  # Store all completions for timing analysis
+        completion_start_times = []
+        completion_end_times = []
         
-        save_completions(completions, completions_save_file)
-        for i in range(len(examples)):
-            d = examples[i]
-            question = parse_question(d, args.data_name)
-            generated_responses = [completions[i].outputs[j].text for j in range(len(completions[i].outputs))]
-            if cur_generation_epoch == 0:
-                file_outputs.append({
-                    "question": question,
-                    "generated_responses": generated_responses,
-                })
-                if "id" in d:
-                    file_outputs[i]["id"] = d["id"]
-                if "source" in d:
-                    file_outputs[i]["source"] = d["source"]
-            else:
-                file_outputs[i]['generated_responses'] += generated_responses
+        for cur_generation_epoch in range(generation_epoch):
+            completions_save_file = f'{args.completions_save_dir}/{model_name}/{args.data_name}/{out_file_prefix}_k{args.n_sampling}_s{args.start_idx}_e{args.end_idx}_gen_round{cur_generation_epoch}.pkl'
+            
+            # Measure inference time using VLLM's native timing
+            batch_start_time = time.time()
+            completions = llm.generate(prompt_batch, sampling_params)
+            batch_end_time = time.time()
+            
+            # Store timing data for analysis
+            all_completions.extend(completions)
+            batch_duration = batch_end_time - batch_start_time
+            per_question_time = batch_duration / len(examples)
+            
+            for i in range(len(examples)):
+                question_start = batch_start_time + (i * per_question_time)
+                question_end = batch_start_time + ((i + 1) * per_question_time)
+                completion_start_times.append(question_start)
+                completion_end_times.append(question_end)
+            
+            save_completions(completions, completions_save_file)
+            
+            for i in range(len(examples)):
+                d = examples[i]
+                question = parse_question(d, args.data_name)
+                generated_responses = [completions[i].outputs[j].text for j in range(len(completions[i].outputs))]
+                
+                if cur_generation_epoch == 0:
+                    file_outputs.append({
+                        "question": question,
+                        "generated_responses": generated_responses,
+                    })
+                    if "id" in d:
+                        file_outputs[i]["id"] = d["id"]
+                    if "source" in d:
+                        file_outputs[i]["source"] = d["source"]
+                else:
+                    file_outputs[i]['generated_responses'] += generated_responses
+        
+        # Extract timing data from VLLM completions
+        perf_instrument.record_vllm_completions(
+            all_completions[:len(examples)],  # Only first batch for timing
+            completion_start_times[:len(examples)],
+            completion_end_times[:len(examples)]
+        )
+        perf_instrument.end_batch()
+        
+        # Process telemetry log
+        log_file = telemetry.get_log_file()
+        
     print("llm generate done")
     print(len(file_outputs))
+    
+    # Process telemetry data
+    print("Processing telemetry data...")
+    process_telemetry_log(
+        log_file, 
+        f'{args.output_dir}/{model_name}/{args.data_name}',
+        telemetry_suffix
+    )
+    
+    # Save performance metrics
+    perf_instrument.save_metrics()
+    stats = perf_instrument.get_summary_stats()
+    print(f"\nPerformance Summary:")
+    for key, value in stats.items():
+        print(f"  {key}: {value:.3f}" if isinstance(value, float) else f"  {key}: {value}")
     
     pass_at_k_list = []
     k = args.k
     
-
     for i in tqdm(range(len(examples)), "check correct..."):
         d = examples[i]
         gt_cot, gt_ans = parse_ground_truth(d, args.data_name)
@@ -214,9 +275,6 @@ def infer(args):
                 pass_at_k_list.append(pass_at_k)
             else:
                 pass_at_k_list.append(0)
-                
-
-            
     
     temp_out_file = out_file + ".tmp"
     with open(temp_out_file, 'w', encoding='utf-8') as f:
@@ -243,7 +301,6 @@ def infer(args):
     
     # Save summary
     summary.save(out_file)
-
 
 if __name__ == "__main__":
     args = parse_args()

@@ -1,0 +1,15 @@
+Evaluation Summary - 2025-06-20 03:50:30
+==================================================
+
+Configuration:
+Model: agentica-org/DeepScaleR-1.5B-Preview
+Dataset: aime (test2024)
+Temperature: 0.6
+Max Tokens: 2048
+N Sampling: 1
+Prompt Type: qwen-instruct
+
+Results:
+Total Questions: 30
+Correct: 1
+Accuracy: 0.0333
