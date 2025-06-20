@@ -153,7 +153,7 @@ def infer(args):
               tensor_parallel_size=len(available_gpus), 
               trust_remote_code=True, 
             #   swap_space=60,
-              gpu_memory_utilization=0.96,
+              gpu_memory_utilization=0.90,
               )
     
     file_outputs = []
