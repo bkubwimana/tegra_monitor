@@ -1,288 +1,474 @@
-# LLM Evaluation with Performance & Energy Instrumentation
+# LLM Evaluation Suite 
 
-A comprehensive system for evaluating Large Language Models (LLMs) with detailed performance monitoring and energy consumption analysis on NVIDIA Jetson platforms.
+LLM MATH evaluation system optimized for cerver class NVIDIA GPUs with comprehensive GPU monitoring, batched inference, and automated parameter sweeping.
 
-## 🚀 Features
+## 🚀 Key Features
 
-- **VLLM-Native Performance Monitoring**: Accurate TTFT, decode time, tokens/sec measurement
-- **Comprehensive Energy Tracking**: Detailed tegrastats telemetry with 50+ metrics
-- **Parameter Sweeping**: Automated testing across different configurations (max_tokens, etc.)
-- **Professional CSV Output**: Wide-format data for analysis and visualization
-- **Robust Error Handling**: Production-ready with graceful error recovery
-- **Modular Design**: Clean separation of concerns for easy extension
+- **H100-Optimized Batching**: Efficient batch processing with configurable batch sizes (8-128+)
+- **NVML GPU Monitoring**: Real-time GPU telemetry using NVIDIA Management Library
+- **Multi-GPU Support**: Automatic tensor parallelism across multiple H100 GPUs  
+- **Advanced Performance Metrics**: Throughput, token generation rates, memory utilization
+- **Parameter Sweeping**: Automated exploration of batch sizes and token limits
+- **Production-Ready**: Robust error handling, comprehensive logging, CSV outputs
 
-## 📁 Project Structure
+## 🏗️ Architecture
 
 ```
 eval/
-├── eval_instrumented.py       # Main instrumented evaluation script
-├── eval.py                   # Original evaluation script (preserved)
-├── instrument/               # Instrumentation modules
-│   ├── performance.py        # VLLM performance timing
-│   ├── telemetry.py         # Tegrastats logging management
-│   ├── telemetry_proc.py    # Comprehensive telemetry parsing
-│   └── sweep.py             # Parameter sweep automation
-├── sweep.sh                 # Shell script for parameter sweeps
-├── run_instrumented.sh      # Interactive script for common tasks
-└── README.md               # This file
+├── eval_dgx.py                 # Main DGX-optimized evaluation script
+├── instrument/
+│   ├── nvml_telemetry.py      # NVML-based GPU monitoring
+│   ├── batched_performance.py  # Batched inference performance tracking
+│   └── dgx_sweep.py           # Parameter sweep automation
+├── run_dgx.sh                 # Single evaluation runner
+├── sweep_dgx.sh               # Parameter sweep runner
+└── requirements_dgx.txt       # DGX-specific dependencies
 ```
 
-## 🛠️ Installation & Setup
+## 📋 Prerequisites
 
-### Prerequisites
+### Hardware
+- NVIDIA DGX system with H100 GPUs
+- CUDA 12.0+ recommended
+- Sufficient GPU memory for your target model
 
-- NVIDIA Jetson platform with tegrastats
+### Software
 - Python 3.8+
-- VLLM library
-- Required Python packages: `transformers`, `tqdm`, `pandas` (optional)
+- NVIDIA drivers with NVML support
+- VLLM library for efficient inference
 
-### Setup
+## 🛠️ Installation
 
 ```bash
-# Navigate to the eval directory
+# Navigate to eval directory
 cd /path/to/tegra_monitor/eval
 
-# Ensure scripts are executable
+# Install DGX-specific requirements
+pip install -r requirements_dgx.txt
+
+# Make scripts executable
 chmod +x *.sh
 
-# Install dependencies (if needed)
-pip install vllm transformers tqdm
+# Verify GPU access
+nvidia-smi
+python -c "import pynvml; pynvml.nvmlInit(); print('NVML initialized successfully')"
 ```
 
-## 📊 Usage
+## 🚀 Quick Start
 
-### Option 1: Single Instrumented Evaluation
-
-Run a single evaluation with comprehensive monitoring:
+### Single Evaluation
 
 ```bash
-CUDA_VISIBLE_DEVICES='0' python eval_instrumented.py \
-    --model_name_or_path "agentica-org/DeepScaleR-1.5B-Preview" \
+# Basic evaluation with default settings
+./run_dgx.sh "meta-llama/Llama-2-7b-hf"
+
+# Custom batch size and token limit
+./run_dgx.sh "meta-llama/Llama-2-7b-hf" 64 8192
+
+# Advanced usage
+python eval_dgx.py \
+    --model_name_or_path "meta-llama/Llama-2-7b-hf" \
+    --batch_size 32 \
+    --max_tokens 4096 \
     --data_name "aime" \
     --prompt_type "qwen-instruct" \
-    --temperature 0.6 \
-    --max_tokens 2048 \
-    --n_sampling 1 \
-    --k 1 \
-    --split "test2024" \
-    --seed 0 \
-    --top_p 0.95 \
-    --surround_with_messages \
-    --output_dir "./instrumented_outputs" \
-    --config_suffix "single_run"
+    --gpu_memory_utilization 0.95 \
+    --tensor_parallel_size 8
 ```
 
-### Option 2: Parameter Sweep
-
-Run automated parameter sweep across different max_tokens values:
+### Parameter Sweeps
 
 ```bash
-# Using the convenience script
-./sweep.sh "./sweep_results" "agentica-org/DeepScaleR-1.5B-Preview"
+# Batch size sweep
+./sweep_dgx.sh "meta-llama/Llama-2-7b-hf" batch
 
-# Or directly with python
-python instrument/sweep.py \
-    --model_name_or_path "agentica-org/DeepScaleR-1.5B-Preview" \
-    --data_name "aime" \
-    --prompt_type "qwen-instruct" \
-    --temperature 0.6 \
-    --output_base_dir "./sweep_results" \
-    --token_values 128 256 512 1024 2048 4096 8192
+# Token length sweep  
+./sweep_dgx.sh "meta-llama/Llama-2-7b-hf" tokens
+
+# Combined parameter sweep
+./sweep_dgx.sh "meta-llama/Llama-2-7b-hf" combined
 ```
 
-### Option 3: Interactive Mode
+## 📊 Output Files
 
-Use the interactive script for guided usage:
+### Performance Metrics
+- `performance_*.csv`: Batch-level performance metrics
+- `performance_detailed_*.csv`: Per-question timing breakdown
+
+### GPU Telemetry  
+- `gpu_telemetry_*.csv`: Comprehensive GPU monitoring data
+
+### Evaluation Results
+- `*.jsonl`: Standard evaluation results with answers and correctness
+
+### Sweep Summaries
+- `dgx_sweep_summary.json`: Detailed sweep results
+- `dgx_sweep_results.csv`: Analysis-ready tabular data
+
+## ⚙️ Configuration Options
+
+### Core Parameters
+
+| Parameter | Default | Description |
+|-----------|---------|-------------|
+| `--batch_size` | 32 | Inference batch size |
+| `--max_tokens` | 4096 | Maximum tokens to generate |
+| `--gpu_memory_utilization` | 0.95 | GPU memory usage ratio |
+| `--tensor_parallel_size` | auto | Number of GPUs for tensor parallelism |
+| `--telemetry_interval` | 0.5 | GPU monitoring sample rate (seconds) |
+
+### Model Configuration
 
 ```bash
-./run_instrumented.sh
+python eval_dgx.py \
+    --model_name_or_path "microsoft/DialoGPT-large" \
+    --batch_size 64 \
+    --max_batch_size 128 \
+    --gpu_memory_utilization 0.90 \
+    --tensor_parallel_size 4 \
+    --dtype "float16"
 ```
 
-### Option 4: Process Existing Telemetry Logs
-
-If you have existing tegrastats logs to process:
+### Dataset Options
 
 ```bash
-python instrument/telemetry_proc.py \
-    --log_file "tegrastats.log" \
-    --output_dir "./processed_results" \
-    --config_suffix "custom"
+# AIME mathematical reasoning
+--data_name "aime" --split "test2024"
+
+# MATH dataset  
+--data_name "math" --split "test"
+
+# Custom dataset (extend data_loader.py)
+--data_name "custom" --data_dir "./my_data"
 ```
 
-## 📈 Output Files
+## 📈 GPU Monitoring
 
-The system generates several output files for comprehensive analysis:
+The NVML telemetry system captures 20+ GPU metrics:
 
-### Performance Metrics (`performance_*.csv`)
+### Power & Temperature
+- Power draw (W) and power limits
+- GPU temperature and thermal throttling
+- Fan speeds and performance states
+
+### Memory & Compute
+- GPU and memory utilization percentages
+- Memory usage (used/total MB)
+- SM and memory clock frequencies
+
+### Interconnect
+- PCIe generation, width, and throughput
+- NVLink utilization (H100-specific)
+- Inter-GPU communication bandwidth
+
+### Example GPU Metrics CSV
 ```csv
-timestamp,model,question_id,ttft,decode_time,total_time,tokens_generated,tokens_per_second,prompt_tokens,completion_tokens,batch_total_time
-2025-06-20T10:30:00,model,0,0.234,1.456,1.690,45,30.82,156,45,12.34
+timestamp,gpu_id,temperature_c,power_draw_w,memory_util_pct,gpu_util_pct,sm_clock_mhz
+1703123456.789,0,65.2,380.5,87.3,95.1,1980
+1703123457.289,0,66.1,385.2,89.1,94.8,1980
 ```
 
-### Energy & Telemetry (`energy_*.csv`)
-Wide-format CSV with 50+ metrics including:
-- **Memory**: RAM usage, SWAP, IRAM with LFB details
-- **CPU**: Individual core usage and frequencies  
-- **GPU**: Usage percentages and frequencies (single/dual GPC)
-- **Power Rails**: CPU, GPU, SOC, CV, VDDRQ, SYS5V current/average
-- **Temperature**: All thermal sensors (CPU, GPU, thermal zones)
-- **Specialized**: EMC, VIC, APE, MTS, NVENC, NVDEC, NVDLA frequencies
+## 🔧 Performance Optimization
 
-### Evaluation Results (`*.jsonl`)
-Standard evaluation results with generated responses and correctness metrics.
+### Batch Size Selection
+- **Small models (7B)**: Start with batch_size=64
+- **Large models (70B)**: Start with batch_size=16-32  
+- **Memory constrained**: Reduce batch_size, increase max_batch_size
 
-### Sweep Summary (`sweep_summary.json`)
-Summary of parameter sweep results with success/failure status for each configuration.
+### Multi-GPU Scaling
+```bash
+# Use all 8 H100s
+export CUDA_VISIBLE_DEVICES="0,1,2,3,4,5,6,7"
+--tensor_parallel_size 8
 
-## 🔧 Configuration Options
-
-### Key Arguments
-
-- `--model_name_or_path`: Path to the model
-- `--data_name`: Dataset name (aime, math, etc.)
-- `--prompt_type`: Prompt template type
-- `--max_tokens`: Maximum tokens to generate
-- `--temperature`: Sampling temperature
-- `--config_suffix`: Suffix for output files (useful for organizing runs)
-
-### Data Sources
-
-The system supports various math/reasoning datasets:
-- AIME (American Invitational Mathematics Examination)
-- MATH dataset
-- Custom datasets (extend in `utils/data_loader.py`)
-
-## 🧠 Architecture
-
-### Performance Instrumentation (`instrument/performance.py`)
-
-Uses VLLM's native `RequestOutput` objects to extract accurate timing:
-- **TTFT**: Time to first token (estimated from VLLM prefill phase)
-- **Decode Time**: Token generation time
-- **Tokens/Second**: Actual throughput calculation
-- **Token Counts**: Prompt and completion tokens from VLLM
-
-### Telemetry Management (`instrument/telemetry.py`)
-
-Context manager for tegrastats:
-```python
-with TelemetryHandler(output_dir, config_suffix) as telemetry:
-    # Your inference code here
-    log_file = telemetry.get_log_file()
+# Use subset of GPUs
+export CUDA_VISIBLE_DEVICES="0,1,2,3"  
+--tensor_parallel_size 4
 ```
 
-### Comprehensive Parsing (`instrument/telemetry_proc.py`)
+### Memory Management
+```bash
+# Conservative memory usage
+--gpu_memory_utilization 0.85
 
-Parses all known tegrastats metrics:
-- Handles multiple format variations
-- Dynamic temperature sensor detection
-- Comprehensive power rail parsing
-- Energy consumption calculations (1Hz sampling assumption)
-
-### Parameter Sweeping (`instrument/sweep.py`)
-
-Automated parameter exploration:
-- Configurable parameter ranges
-- Organized output directories
-- Success/failure tracking
-- Summary generation
+# Aggressive memory usage (monitor for OOM)
+--gpu_memory_utilization 0.98
+```
 
 ## 📊 Analysis Examples
-
-### Energy Analysis
-```python
-import pandas as pd
-
-# Load energy data
-df = pd.read_csv('energy_tokens_2048.csv')
-
-# Calculate average power consumption
-avg_power = df['pom_5v_in_current_mw'].mean()
-total_energy = avg_power * len(df) / 1000  # Convert to Joules
-
-print(f"Average Power: {avg_power:.1f}mW")
-print(f"Total Energy: {total_energy:.2f}J")
-```
 
 ### Performance Analysis
 ```python
 import pandas as pd
+import matplotlib.pyplot as plt
 
 # Load performance data
-df = pd.read_csv('performance_tokens_2048.csv')
+df = pd.read_csv('performance_dgx_batch32_tokens4096.csv')
 
-# Analyze timing metrics
-print(f"Average TTFT: {df['ttft'].mean():.3f}s")
-print(f"Average Tokens/Sec: {df['tokens_per_second'].mean():.1f}")
-print(f"Average Total Time: {df['total_time'].mean():.3f}s")
+# Plot throughput over time
+plt.figure(figsize=(12, 6))
+plt.plot(df['timestamp'], df['avg_tokens_per_second'])
+plt.xlabel('Time')
+plt.ylabel('Tokens/Second')
+plt.title('Token Generation Throughput')
+plt.show()
+
+# Summary statistics
+print(f"Average throughput: {df['avg_tokens_per_second'].mean():.2f} tokens/s")
+print(f"Peak throughput: {df['avg_tokens_per_second'].max():.2f} tokens/s")
 ```
 
-## 🔍 Troubleshooting
+### GPU Utilization Analysis
+```python
+# Load GPU telemetry
+gpu_df = pd.read_csv('gpu_telemetry_dgx_batch32_tokens4096.csv')
+
+# Per-GPU summary
+for gpu_id in gpu_df['gpu_id'].unique():
+    gpu_data = gpu_df[gpu_df['gpu_id'] == gpu_id]
+    print(f"GPU {gpu_id}:")
+    print(f"  Avg Utilization: {gpu_data['gpu_util_pct'].mean():.1f}%")
+    print(f"  Avg Power: {gpu_data['power_draw_w'].mean():.1f}W")
+    print(f"  Peak Temperature: {gpu_data['temperature_c'].max():.1f}°C")
+```
+
+### Energy Consumption
+```python
+# Calculate total energy consumption
+total_energy_j = 0
+for gpu_id in gpu_df['gpu_id'].unique():
+    gpu_data = gpu_df[gpu_df['gpu_id'] == gpu_id]
+    # Approximate energy as power × time
+    avg_power_w = gpu_data['power_draw_w'].mean()
+    duration_s = (gpu_data['timestamp'].max() - gpu_data['timestamp'].min())
+    energy_j = avg_power_w * duration_s
+    total_energy_j += energy_j
+
+print(f"Total energy consumption: {total_energy_j:.1f} J ({total_energy_j/3600:.3f} Wh)")
+```
+
+## 🔍 Parameter Sweep Analysis
+
+```python
+# Load sweep results
+sweep_df = pd.read_csv('dgx_sweep_results.csv')
+
+# Find optimal configurations
+best_throughput = sweep_df.loc[sweep_df['questions_per_second'].idxmax()]
+best_efficiency = sweep_df.assign(
+    efficiency=sweep_df['questions_per_second'] / sweep_df['avg_power_w']
+).loc[sweep_df.assign(
+    efficiency=sweep_df['questions_per_second'] / sweep_df['avg_power_w']
+)['efficiency'].idxmax()]
+
+print(f"Best throughput: batch={best_throughput['batch_size']}, "
+      f"tokens={best_throughput['max_tokens']}, "
+      f"{best_throughput['questions_per_second']:.2f} q/s")
+
+print(f"Most efficient: batch={best_efficiency['batch_size']}, "
+      f"tokens={best_efficiency['max_tokens']}, "
+      f"{best_efficiency['efficiency']:.3f} q/s/W")
+```
+
+## 🚨 Troubleshooting
 
 ### Common Issues
 
-1. **Permission denied for tegrastats**
-   ```bash
-   sudo chmod +x /usr/bin/tegrastats
-   # Or run with sudo if needed
-   ```
+**GPU Memory Errors**
+```bash
+# Reduce memory utilization
+--gpu_memory_utilization 0.80
 
-2. **Import errors**
-   ```bash
-   # Ensure you're in the eval directory
-   cd /path/to/tegra_monitor/eval
-   export PYTHONPATH=$PYTHONPATH:$(pwd)
-   ```
+# Reduce batch size
+--batch_size 16
+```
 
-3. **GPU memory issues**
-   - Adjust `gpu_memory_utilization` in eval_instrumented.py
-   - Reduce batch size or max_tokens
+**NVML Initialization Failed**
+```bash
+# Check NVIDIA drivers
+nvidia-smi
 
-4. **Tegrastats not logging**
-   - Check if tegrastats is available: `which tegrastats`
-   - Ensure proper permissions
-   - Verify Jetson platform compatibility
+# Reinstall pynvml
+pip uninstall pynvml nvidia-ml-py3
+pip install pynvml
+```
 
-### Debug Mode
+**Low GPU Utilization**
+```bash
+# Increase batch size
+--batch_size 64
 
-Enable verbose logging by adding debug prints or using Python's logging module.
+# Check tensor parallelism
+--tensor_parallel_size 8
+```
 
-## 🚀 Extension Points
+**Performance Bottlenecks**
+```bash
+# Enable tensor parallelism
+export CUDA_VISIBLE_DEVICES="0,1,2,3,4,5,6,7"
 
-### Adding New Metrics
+# Optimize memory usage
+--max_batch_size 128
 
-1. **Performance Metrics**: Extend `VLLMTimingMetrics` dataclass
-2. **Telemetry Metrics**: Add parsing patterns in `parse_tegrastats_line()`
-3. **Parameter Sweeps**: Extend `ParameterSweep` class with new sweep types
+# Use appropriate dtype
+--dtype "float16"  # or "bfloat16" for H100
+```
+
+## 🔬 Advanced Usage
 
 ### Custom Datasets
+1. Add dataset loader to `utils/data_loader.py`
+2. Add prompt template to `prompts/[prompt_type]/[dataset].py`  
+3. Add answer extraction to `utils/parser.py`
 
-Add support in `utils/data_loader.py` and `utils/parser.py`.
+### Custom Metrics
+1. Extend `GPUMetrics` class in `nvml_telemetry.py`
+2. Add metric collection in `_collect_gpu_metrics()`
+3. Update CSV headers and row formatting
 
-### New Output Formats
+### Integration with MLflow
+```python
+import mlflow
 
-Extend the CSV writers or add JSON/Parquet export options.
+# Log sweep results to MLflow
+for result in sweep_results:
+    with mlflow.start_run():
+        mlflow.log_params({
+            'batch_size': result['batch_size'],
+            'max_tokens': result['max_tokens']
+        })
+        mlflow.log_metrics(result['metrics'])
+```
 
-## 📝 License
+## 📄 License
 
-This project follows the same license as the parent repository.
+This project maintains the same license as the parent tegra_monitor repository.
 
 ## 🤝 Contributing
 
-1. Fork the repository
-2. Create a feature branch
-3. Add tests for new functionality
-4. Submit a pull request
-
-## 📞 Support
-
-For issues related to:
-- **VLLM**: Check VLLM documentation
-- **Jetson/Tegrastats**: NVIDIA Jetson documentation
-- **This instrumentation**: Create an issue with detailed logs
+1. Focus on DGX/cloud optimizations (avoid edge device code)
+2. Maintain compatibility with VLLM updates
+3. Add comprehensive GPU monitoring for new architectures
+4. Include performance benchmarks in pull requests
 
 ---
 
-**Happy Evaluating! 🎯**
+**Performance Note**: This system is optimized for NVIDIA DGX H100 systems. Performance on other hardware may vary. For edge deployment, use the original Tegra Orin codebase.
 
-*For the most accurate energy measurements, ensure your Jetson device is in maximum performance mode and not thermal throttling.*
+
+
+## REAMDE FOR Normal eval with no performance monitoring
+
+
+# Math Problem Evaluation Framework
+
+This repository contains scripts for evaluating Large Language Models (LLMs) on mathematical reasoning tasks. The evaluation framework includes both inference (using the VLLM framework) and evaluation (using both rule-based and model-based approaches) components.
+
+## Environment Setup
+
+When setting up the environment, pay attention to package version numbers, especially for those with specific version requirements noted in the documentation.
+
+```bash
+pip install -r requirements.txt
+```
+
+## Benchmark Evaluation
+
+### Data Preparation
+
+All benchmark datasets for evaluation should be placed in the `./data` directory.
+
+To add a new test dataset, follow the format of existing benchmarks in the `./data` directory.
+
+### Prompt Configuration
+
+For mathematical problems, we use the Qwen-instruct template:
+
+```python
+system_prompt = "Please reason step by step, and put your final answer within \\boxed{}."
+
+few_shot_prompt = ""
+
+question_format = """{question}"""
+```
+
+When adding a new mathematics benchmark, you can directly copy the above content to the corresponding `./prompts/qwen-instruct/xxx.py` file.
+
+### Rule-Based Evaluation Interface
+
+The framework provides a simple interface for rule-based evaluation of model predictions. Here's a basic example of how to use it:
+
+```python
+from utils.grader import check_is_correct
+from utils.parser import extract_answer
+
+def evaluate_prediction(model_pred: str, gold_answer: str) -> bool:
+    """
+    Evaluate a model's prediction against a gold answer.
+    
+    Args:
+        model_pred (str): The model's prediction with answer in \boxed{}.
+        gold_answer (str): The correct answer to compare against.
+    
+    Returns:
+        bool: True if the prediction matches the gold answer, False otherwise.
+    """
+    # Extract the answer from model prediction
+    extracted_answer = extract_answer(model_pred)
+    
+    # Check if the extracted answer matches the gold answer
+    return check_is_correct(extracted_answer, gold_answer)
+
+if __name__ == "__main__":
+    # Example usage
+    model_pred = "Let's solve this step by step:\n1. First...\n2. Then...\nSo the final answer is \\boxed{\\frac{1}{4}}"
+    gold_answer = "0.25"
+    
+    is_correct = evaluate_prediction(model_pred, gold_answer)
+    print(f"Prediction is correct: {is_correct}")  # True
+```
+
+The evaluation utilities handle various answer formats:
+- Fractions (e.g., "\\frac{1}{4}")
+- Decimals (e.g., "0.25")
+- Mixed numbers
+- Mathematical expressions
+
+### Running Evaluation
+
+Execute the evaluation script using:
+
+```bash
+bash eval.sh
+```
+
+Parameters in `eval.sh`:
+
+```bash
+CUDA_VISIBLE_DEVICES='0,1,2,3' \
+python eval.py \
+--model_name_or_path "/path/to/model/weights" \  # Path to model weights
+--data_name "math" \  # Benchmark name (corresponding to first-level directory in ./data)
+--prompt_type "qwen-instruct" \  # Default chat template
+--temperature 0.0 \  # Sampling temperature
+--start_idx 0 \  # Starting index for evaluation data
+--end_idx -1 \  # Ending index for evaluation data
+--n_sampling 1 \  # Number of samples per question
+--k 1 \  # k value for unbiased pass@k calculation
+--split "test" \  # Benchmark subset partition
+--max_tokens 32768 \  # Maximum output length
+--seed 0 \  # Random seed
+--top_p 1 \  # Top-p sampling parameter
+--surround_with_messages \  # Enable this flag if using chat template
+```
+
+## Model-Based Evaluation
+
+While rule-based evaluation works well for structured answers (e.g., multiple choice questions, pure numerical responses) like those in AIME and most MATH problems, more complex response types (expressions, equations, or simple natural language descriptions) require model-based evaluation.
+
+We use Qwen2.5-32B-Instruct as our judge model due to its excellent instruction-following capabilities and strong foundational knowledge. For reference, our evaluation prompts can be found in [`prompt.txt`](https://github.com/GAIR-NLP/LIMO/blob/main/eval/prompt.txt).
+
+
+## Acknowledgments
+
+Our evaluation code is modified from [Qwen2.5-Math](https://github.com/QwenLM/Qwen2.5-Math/tree/main/evaluation). We thank their team for their valuable contributions to the community.
