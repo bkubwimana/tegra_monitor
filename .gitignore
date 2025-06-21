@@ -18,3 +18,11 @@ venv
 venv/*
 
 outputs
+outputs/*
+sweep_results
+sweep_results/*
+
+#pkl files
+*.pkl
+completions
+completions/*
