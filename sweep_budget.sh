@@ -6,9 +6,9 @@ set -e
 
 # Configuration arrays
 MODELS=(
-    "deepseek-ai/DeepSeek-R1-Distill-Qwen-1.5B",
-    "deepseek-ai/DeepSeek-R1-Distill-Qwen-14B",
-    "deepseek-ai/DeepSeek-R1-Distill-Llama-8B",
+    "deepseek-ai/DeepSeek-R1-Distill-Qwen-1.5B"
+    "deepseek-ai/DeepSeek-R1-Distill-Qwen-14B"
+    "deepseek-ai/DeepSeek-R1-Distill-Llama-8B"
 )
 
 MAX_TOKENS_VALUES=(128 256)

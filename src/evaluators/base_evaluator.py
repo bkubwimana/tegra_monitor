@@ -103,7 +103,8 @@ class BaseEvaluator:
         model_config = VLLMConfig(
             model_path=model_path,
             tensor_parallel_size=self.config.model.get('tensor_parallel_size', 1),
-            gpu_memory_utilization=self.config.model.get('gpu_memory_utilization', 0.90)
+            gpu_memory_utilization=self.config.model.get('gpu_memory_utilization', 0.90),
+            max_model_len=self.config.model.get('max_model_len', 4096)
         )
         
         print(f"Setting up model: {model_path}")

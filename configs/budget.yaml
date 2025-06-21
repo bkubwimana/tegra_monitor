@@ -7,10 +7,11 @@ description: "Efficient evaluation with 512 token limit for resource-constrained
 # Model settings
 model:
   max_tokens: 128
+  max_model_len: 1024 
   temperature: 0.6
   top_p: 0.95
   tensor_parallel_size: 1
-  gpu_memory_utilization: 0.70
+  gpu_memory_utilization: 0.60
 
 # Evaluation settings
 evaluation:
